@@ -13,21 +13,21 @@ Require Import Parsing.
  *)
 
 Module Example_1.
-  
+
   Inductive token := open | close.
-  
+
   Definition eq_token_dec : forall t t' : token, {t = t'} + {t <> t'}.
   decide equality.
   Defined.
-  
+
   Inductive par := epsilon : par | wrappend : par -> par -> par.
-  
+
   Fixpoint print (p : par) : list token :=
     match p with
       | epsilon => nil
       | wrappend m n => (open::nil) ++ print m ++ (close::nil) ++ print n
     end.
-  
+
   Program Definition par_parser : Parser token (fun _ => True) par (fun x p y => x = print p ++ y /\ length y <= length x) :=
     Fix token par (fun i parRec =>
       Plus _ _ (fun i' => i = i') _
@@ -40,7 +40,7 @@ Module Example_1.
            parRec >>= fun n =>
            Return (wrappend m n)))
       i).
-  
+
   Next Obligation.
     intuition; subst; simpl in *; auto.
   Defined.
@@ -59,17 +59,17 @@ Module Example_1.
           | nil => None
         end)
       (par_parser (exist (fun _ => True) input I)).
-  
+
   Eval compute in parse (open::open::close::nil).
   Eval compute in parse (open::open::close::close::nil).
   Eval compute in parse (open::open::close::open::close::close::nil).
-  
+
 End Example_1.
 
 Module Example_2.
-  
+
   Inductive token := mul | div | add | sub | open | close | num (_:nat).
-  
+
   Definition eq_token_dec : forall t t' : token, {t = t'} + {t <> t'}.
   destruct t; destruct t';
     try (left; congruence) || (right; discriminate).
@@ -77,11 +77,11 @@ Module Example_2.
     left; congruence.
     right; intro Q; injection Q; assumption.
   Defined.
-  
+
   Inductive mulP := mul1 (_:sumP) | mul2 (_:sumP) (_:mulP) | mul3 (_:sumP) (_:mulP)
        with sumP := sum1 (_:unitP) | sum2 (_:unitP) (_:sumP) | sum3 (_:unitP) (_:sumP)
        with unitP := unit1 (_:nat) | unit2 (_:mulP).
-  
+
   Fixpoint printM (m : mulP) : list token :=
     match m with
       | mul1 s => printS s
@@ -99,14 +99,14 @@ Module Example_2.
       | unit1 n => num n::nil
       | unit2 m => (open::nil) ++ printM m ++ (close::nil)
     end.
-  
+
   Program Definition NumToken : Parser token (fun _ => True) nat (fun xs y ys => xs = num y :: ys) :=
     fun inp =>
       match inp with
         | num n::xs => (n, xs) :: nil
         | _ => nil
       end.
-  
+
   Definition par_parser : Parser token (fun _ => True) mulP (fun x p y => x = printM p ++ y /\ length y <= length x).
   refine (
     Fix token mulP (fun i mulRec =>
@@ -161,21 +161,21 @@ Module Example_2.
              Return (mul3 s m)))))
         (exist _ (proj1_sig i) (refl_equal (proj1_sig i))))
   );
-  
+
   try solve [
     intuition; destruct_conjs; subst; simpl in *;
       ( reflexivity || congruence || omega ||
         trivial || auto || rewrite app_ass; reflexivity ) ].
-  
+
   Defined.
-  
+
   Inductive expr :=
   | mulE : expr -> expr -> expr
   | divE : expr -> expr -> expr
   | addE : expr -> expr -> expr
   | subE : expr -> expr -> expr
   | natE : nat -> expr.
-  
+
   Fixpoint exprifyM (m : mulP) : expr :=
     match m with
       | mul1 s => exprifyS s
@@ -193,7 +193,7 @@ Module Example_2.
       | unit1 n => natE n
       | unit2 m => exprifyM m
     end.
-  
+
   Program Fixpoint mulifyE (e : expr) : { m : mulP | exprifyM m = e } :=
     match e with
       | mulE x y => mul2 (sumifyE x) (mulifyE y)
@@ -218,12 +218,12 @@ Module Example_2.
       | addE x y => unit2 (mul1 (sum2 (unitifyE x) (sumifyE y)))
       | subE x y => unit2 (mul1 (sum3 (unitifyE x) (sumifyE y)))
     end.
-  
+
   Program Definition expr_parser : Parser token (fun _ => True) expr (fun _ _ _ => True) :=
     fudge_pre_and_post_conditions _ _ _
       (par_parser >>= fun m =>
        Return (exprifyM m)).
-  
+
   Definition test_parser (l : list token) : option expr :=
     (fix loop results :=
       match results with
@@ -232,11 +232,11 @@ Module Example_2.
         | _ :: results => loop results
       end)
     (expr_parser (exist _ l I)).
-  
+
   (*
      (1+1*3-7*(6+4))/24
   *)
-  
+
   Eval vm_compute in test_parser
     (open::num 1::add::num 1::mul::num 3::sub::num 7::mul::open::num 6::add::num 4::close::close::div::num 24::nil).
 
